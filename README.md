@@ -23,12 +23,17 @@ This project automates the provisioning of a private, production-ready PostgreSQ
 ### 1. Automated Python Compliance Check
 The Boto3 audit queries the AWS RDS API, confirming that storage encryption is active and public accessibility is completely disabled:
 
-![Python Compliance Audit](Py%20Audit.png)
+<img width="484" height="127" alt="Py Audit" src="https://github.com/user-attachments/assets/84bc88de-fe69-421b-98d9-36b0197519d5" />
+
 
 ### 2. Terraform State & Outputs
 Infrastructure deployed and validated via Terraform state outputs:
 
-![Terraform Output](T%20output.png)
+<img width="666" height="148" alt="TF plan" src="https://github.com/user-attachments/assets/20dc1346-6fae-41c2-bf26-71e3cc3276ae" />
+
+<img width="614" height="36" alt="T output" src="https://github.com/user-attachments/assets/77f728c8-48a0-4cbc-abc3-adbd9079df90" />
+
+
 
 ---
 
