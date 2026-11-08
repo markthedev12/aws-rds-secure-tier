@@ -1,45 +1,72 @@
-# AWS RDS Secure PostgreSQL Tier with Terraform & Python Compliance Audit
+# AWS RDS PostgreSQL Security Lab
 
-## Architecture Overview
-This project automates the provisioning of a private, production-ready PostgreSQL database tier on AWS using **Terraform (Infrastructure as Code)** and programmatically validates cloud security posture using an automated **Python (`boto3`) compliance audit**.
+A Terraform lab that provisions encrypted PostgreSQL with public addressing
+disabled, plus a read-only Python auditor. Demonstrates infrastructure and API
+inspection; it is not a production-ready database architecture.
 
-### Key Security & Architectural Controls
-* **Private Subnet Placement:** Bound to an `aws_db_subnet_group` spanning multiple Availability Zones to ensure architectural isolation.
-* **Network Isolation & Least Privilege:** Security Group ingress is strictly restricted to PostgreSQL port `5432` from internal VPC CIDR ranges only; all public internet ingress (`0.0.0.0/0`) is explicitly blocked.
-* **Storage Encryption at Rest:** Automated encryption enforced using AWS KMS keys (`storage_encrypted = true`).
-* **Zero Public Exposure:** `publicly_accessible` is set to `false`, preventing public IP assignment.
+## Architecture and boundaries
 
----
+`Default VPC subnets -> RDS subnet group -> encrypted PostgreSQL`
 
-## Project Structure
-* `main.tf` — Terraform configuration declaring the isolated VPC subnet group, security group rules, and PostgreSQL RDS instance.
-* `audit_rds.py` — Python automation script leveraging `boto3` to audit live RDS instances for encryption-at-rest and network exposure.
-* `.gitignore` — Standard cloud engineering rules to prevent state files and sensitive secrets from leaking to source control.
+`VPC CIDR -> security group TCP/5432 -> RDS`
 
----
+RDS manages the master password in Secrets Manager. No password value belongs in
+source or command history. A previous version contained a literal password: if
+it was ever deployed, rotate that credential. This change neither rotates a live
+database nor removes earlier Git history.
 
-## Verification & Security Audit Results
+The subnet group uses discovered default-VPC subnets; this does **not** establish
+private subnet routing. `publicly_accessible = false` disables public addressing
+but is not a complete network isolation audit. TCP/5432 is permitted from the
+whole VPC CIDR, not just one application security group. Multi-AZ and production
+backup/deletion protections are not implemented.
 
-### 1. Automated Python Compliance Check
-The Boto3 audit queries the AWS RDS API, confirming that storage encryption is active and public accessibility is completely disabled:
+## Local tests
 
-<img width="484" height="127" alt="Py Audit" src="https://github.com/user-attachments/assets/84bc88de-fe69-421b-98d9-36b0197519d5" />
+Python 3.12+; no AWS account or dependencies required for tests.
 
+```sh
+python -m unittest discover -s tests -v
+```
 
-### 2. Terraform State & Outputs
-Infrastructure deployed and validated via Terraform state outputs:
+## Provision and inspect
 
-<img width="666" height="148" alt="TF plan" src="https://github.com/user-attachments/assets/20dc1346-6fae-41c2-bf26-71e3cc3276ae" />
+Requires Terraform, provisioning credentials, a default VPC in us-east-2,
+and permission for RDS to manage its Secrets Manager secret. RDS, storage, and
+Secrets Manager may incur charges; check account eligibility and pricing first.
 
-<img width="614" height="36" alt="T output" src="https://github.com/user-attachments/assets/77f728c8-48a0-4cbc-abc3-adbd9079df90" />
-
-
-
----
-
-## How to Run
-
-### 1. Deploy Infrastructure
-```bash
+```sh
 terraform init
-terraform apply -auto-approve
+terraform fmt -check
+terraform validate
+terraform plan -out=lab.tfplan
+terraform apply lab.tfplan
+python -m pip install -r requirements.txt
+python audit_rds.py --region us-east-2
+```
+
+The auditor uses `rds:DescribeDBInstances` and paginates all instances in the
+selected region. JSON shows encryption, public accessibility, and Multi-AZ
+configuration. Exit 0 means no encrypted/public-access violations were found;
+1 means at least one was found; 2 means collection failed. An empty list means
+no instances were returned, not proof that the entire account is secure.
+
+Verify the instance settings in AWS and test intended application connectivity.
+Neither the auditor nor its tests prove subnet isolation, actual reachability,
+least privilege, or compliance.
+
+## Cleanup and next steps
+
+```sh
+terraform plan -destroy
+terraform destroy
+```
+
+The lab sets `skip_final_snapshot = true`: destroying it deletes the database
+without a final snapshot. Use fictional data. Confirm remaining snapshots and
+Secrets Manager resources and charges separately after teardown.
+
+Next: explicit private subnets, application-only security-group ingress, defined
+backup retention, deletion protection, migration/restore exercises, and CI policy
+scanning. Keep Terraform state/plans and live audit reports out of Git. Add
+targeted tests whenever changing audit behavior.

@@ -62,17 +62,17 @@ resource "aws_security_group" "rds_sg" {
 
 # 4. PostgreSQL RDS Instance
 resource "aws_db_instance" "postgres_db" {
-  identifier             = "dev-secure-postgres-db"
-  allocated_storage      = 20
-  max_allocated_storage  = 20
-  engine                 = "postgres"
-  engine_version         = "16"
-  instance_class         = "db.t4g.micro"
-  db_name                = "appdb"
-  username               = "dbadmin"
-  password               = "SecureDevPass2026!"
-  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  identifier                  = "dev-secure-postgres-db"
+  allocated_storage           = 20
+  max_allocated_storage       = 20
+  engine                      = "postgres"
+  engine_version              = "16"
+  instance_class              = "db.t4g.micro"
+  db_name                     = "appdb"
+  username                    = "dbadmin"
+  manage_master_user_password = true
+  db_subnet_group_name        = aws_db_subnet_group.rds_subnet_group.name
+  vpc_security_group_ids      = [aws_security_group.rds_sg.id]
 
   # Core Architectural Best Practices
   publicly_accessible = false
